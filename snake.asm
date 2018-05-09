@@ -336,13 +336,13 @@ stop:
 	jmp loop_gen
 sec_up:
 	push si
-	mov si, 2
+	mov si, 4;2
 	mov di, sneak_tail[si]
 	mov ax, 0000h
 	stosw
 	
-	mov si, 0
-	mov cx, 1
+	mov si, 2;0
+	mov cx, 2;1
 sneak_move_start:
 	mov di, sneak_tail[si]
 	mov sneak_tail[si+2], di
@@ -358,7 +358,7 @@ sneak_move_start:
 	jmp loop_gen
 
 sneak_tail dw 1680, 1678, 1676, 1674, 1672, 1670, 1668
-counter_sneak db 50
+counter_sneak db 100;50
 direct db 0
 is_move db 0
 
@@ -383,7 +383,7 @@ shift	proc near
 	cmp al, 3
 	jz @@direct_left
 @@direct_right:
-	mov dx, 158
+	mov dx, 156;158
 	mov cx, 25
 @@loop_right:
 	cmp dx, di
@@ -393,11 +393,11 @@ shift	proc near
 	add di, 2
 	jmp @@end
 @@right_shift:
-	sub di, 158
+	sub di, 118;158
 	jmp @@end
 	
 @@direct_up:
-	mov dx, 0
+	mov dx, 160;0
 	mov cx, 80
 @@loop_up:
 	cmp dx, di
@@ -407,11 +407,11 @@ shift	proc near
 	sub di, 160
 	jmp @@end
 @@up_shift:
-	add di, 160*24
+	add di, 160*22;160*24
 	jmp @@end
 
 @@direct_down:
-	mov dx, 160*24
+	mov dx, 160*23;160*24
 	mov cx, 80
 @@loop_down:
 	cmp dx, di
@@ -421,11 +421,11 @@ shift	proc near
 	add di, 160
 	jmp @@end
 @@down_shift:
-	sub di, 160*24
+	sub di, 160*22;160*24
 	jmp @@end
 
 @@direct_left:
-	mov dx, 0
+	mov dx, 38;0
 	mov cx, 25
 @@loop_left:
 	cmp dx, di
@@ -435,7 +435,7 @@ shift	proc near
 	sub di, 2
 	jmp @@end
 @@left_shift:
-	add di, 158
+	add di, 118;158
 	jmp @@end
 	
 @@end:
@@ -453,7 +453,10 @@ read_buf	proc near
 	ret
 read_buf endp
 text1 db ' Scores: 333\n\n'
-	  db ' Speed: 1\n\n'
+	  db ' Speed: 1\n\n\n'
       db ' Help!\n\n'
+	  db ' Change speed:\n +/- or 1,2,3,4,5\n\n'
+	  db ' Stop:\n Space button\n\n'
+	  db ' Snake control:\n Arrow buttons'
 len dw $-text1
 end _start
