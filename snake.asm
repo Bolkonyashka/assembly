@@ -50,6 +50,10 @@ int9 proc near
 	jz @@2
 	cmp al, 0d0h
 	jz @@2
+	cmp al, 0ceh
+	jz @@2
+	cmp al, 0cah
+	jz @@2
 	cmp al, 81h
 	jz @@2
 	jmp @@9
@@ -80,7 +84,7 @@ int1c proc near
 	jz @@3
 	mov al, counter_sneak
 	inc al
-	cmp al, 10
+	cmp al, speed;10
 	jle @@2
 	mov al, 0
 	mov counter_sneak, al	
@@ -256,7 +260,7 @@ print:
 	jmp text
 next:
 	mov di, 1680
-
+	jmp speedup_bri
 
 loop_gen:
 	hlt
@@ -264,18 +268,26 @@ loop_gen:
 	cmp bx, tail
 	jz loop_gen
 	call read_buf
-	cmp al, 30h
-	jz sec_up
+	;cmp al, 30h
+	;jz sec_up
+	cmp al, 0cbh
+	jz left
 	cmp al, 0b9h
 	jz start_stop
 	cmp al, 0c8h
 	jz up
 	cmp al, 0cdh
 	jz right
-	cmp al, 0cbh
-	jz left
+	;cmp al, 0cbh
+	;jz left
+	cmp al, 30h
+	jz sec_up
 	cmp al, 0d0h
-	jz down
+	jz down;
+	cmp al, 0ceh
+	jz speedup_bri;
+	cmp al, 0cah
+	jz speeddown_bri
 	cmp	al, 81h
 	jnz	loop_gen
 ;
@@ -323,6 +335,12 @@ right:
 	mov al, 0
 	mov direct, al
 	jmp loop_gen
+loop_gen_bri:
+	jmp loop_gen
+speedup_bri:
+	jmp speedup
+speeddown_bri:
+	jmp speeddown
 start_stop:
 	mov al, switch
 	cmp al, 0
@@ -336,6 +354,12 @@ stop:
 	jmp loop_gen
 sec_up:
 	push si
+	mov al, dist
+	inc al
+	cmp al, 20
+	jz scores_up
+sc_up_ret:
+	mov dist, al
 	mov si, 4;2
 	mov di, sneak_tail[si]
 	mov ax, 0000h
@@ -356,16 +380,98 @@ sneak_move_start:
 	
 	pop si
 	jmp loop_gen
+speedup:
+	mov al, speed
+	cmp al, 0;2
+	jz loop_gen_bri
+	sub al, 4
+	mov speed, al
+	mov di, 498
+	mov ah, 3
+	mov al, speedinfo
+	inc al
+	mov speedinfo, al
+	stosw
 
-sneak_tail dw 1680, 1678, 1676, 1674, 1672, 1670, 1668
-counter_sneak db 100;50
+	jmp loop_gen_bri
+speeddown:
+	mov al, speed
+	cmp al, 16;18
+	jz loop_gen_bri
+	add al, 4
+	mov speed, al
+	mov di, 498
+	mov ah, 3
+	mov al, speedinfo
+	dec al
+	mov speedinfo, al
+	stosw
+
+	jmp loop_gen_bri
+scores_up:
+	;mov ah, 3
+	;mov al, 178
+	;mov di, 178
+	;stosw
+
+	;mov al, snake_len
+	;inc al
+	;mov snake_len, al
+	;aam
+	;mov ch, ah
+	;mov ah, 3
+	;mov di, 182
+	;add al, 30h
+	;mov al, bl
+	;stosw
+	;mov al, ch
+	;add al, 30h
+	;mov di, 180
+	;stosw
+	mov ax, snake_len
+	inc ax
+	mov snake_len, ax
+	mov bl, 10
+	mov di, 178
+	xor cx, cx
+	vivoloop:
+		inc cx
+		div bl
+		push ax
+		cmp al, 0
+		jz vivend
+		xor ah, ah
+		jmp vivoloop
+		;add dl, 30h
+		;mov ah, 3
+		;mov di, 182
+		;mov al, dl
+		;stosw
+	vivend:
+		pop ax
+		mov al, ah
+		add al, 30h
+		mov ah, 3
+		stosw
+		loop vivend
+	mov al, 0
+	jmp sc_up_ret
+;4 9
+sneak_tail dw 1680, 1678, 1676;, 1674, 1672, 1670, 1668
+counter_sneak db 50
+speed db 20;22
+speedinfo db 30h
 direct db 0
 is_move db 0
+dist db 0
+snake_len dw 0
 
 move	proc near
 	call shift
 	
-	mov ax, 7000h
+	;mov ax, 7000h
+	mov ah, 2
+	mov al, 79
 	stosw
 	sub di, 2
 	
@@ -452,8 +558,8 @@ read_buf	proc near
 	mov head, bx
 	ret
 read_buf endp
-text1 db ' Scores: 333\n\n'
-	  db ' Speed: 1\n\n\n'
+text1 db ' Scores: 0\n\n'
+	  db ' Speed: \n\n\n'
       db ' Help!\n\n'
 	  db ' Change speed:\n +/- or 1,2,3,4,5\n\n'
 	  db ' Stop:\n Space button\n\n'
