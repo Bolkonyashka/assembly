@@ -58,6 +58,11 @@ int9 proc near
 	jz @@2
 	jmp @@9
 @@2:
+	mov ah, game_end
+	cmp ah, 0
+	je next2
+	mov al, 81h
+next2:
 	call write_buf
 @@9:
 	in 	al, 61h
@@ -85,7 +90,10 @@ int1c proc near
 	mov al, counter_sneak
 	inc al
 	cmp al, speed;10
-	jle @@2
+	jle @@2;
+	mov ah, game_end
+	cmp ah, 0
+	jne @@3;
 	mov al, 0
 	mov counter_sneak, al	
 	mov al, 30h
@@ -268,6 +276,9 @@ loop_gen:
 	cmp bx, tail
 	jz loop_gen
 	call read_buf
+	;mov ah, game_end
+	;cmp ah, 0
+	;jne reb_mark
 	;cmp al, 30h
 	;jz sec_up
 	cmp al, 0cbh
@@ -288,6 +299,7 @@ loop_gen:
 	jz speedup_bri;
 	cmp al, 0cah
 	jz speeddown_bri
+;reb_mark:
 	cmp	al, 81h
 	jnz	loop_gen
 ;
@@ -357,33 +369,48 @@ sec_up:
 	mov al, dist
 	inc al
 	cmp al, 20
-	jz scores_up
+	jz scores_up_bri
 sc_up_ret:
-	mov dist, al
-	mov si, 4;2
-	mov di, sneak_tail[si]
+	mov dist, al;
+	mov cx, snake_len
+	sub cx, 1
+	mov ax, 2
+	mul cx
+	mov si, ax;4;2
+	mov di, snake_tail[si]
 	mov ax, 0000h
 	stosw
 	
-	mov si, 2;0
-	mov cx, 2;1
+	mov cx, snake_len
+	sub cx, 2
+	mov ax, 2
+	mul cx
+	mov si, ax
+	;mov si, 2;0
+	;mov cx, 2;1
+	mov cx, snake_len
+	sub cx, 1
 sneak_move_start:
-	mov di, sneak_tail[si]
-	mov sneak_tail[si+2], di
+	mov di, snake_tail[si]
+	mov snake_tail[si+2], di
 	sub si, 2
 	loop sneak_move_start
 	
 	mov si, 0
-	mov di, sneak_tail[si]
+	mov di, snake_tail[si]
 	call move
-	mov sneak_tail[si], di
+	mov snake_tail[si], di
 	
 	pop si
 	jmp loop_gen
+scores_up_bri:
+	jmp scores_up
+loop_gen_bri2:
+	jmp loop_gen_bri
 speedup:
 	mov al, speed
 	cmp al, 0;2
-	jz loop_gen_bri
+	jz loop_gen_bri2
 	sub al, 4
 	mov speed, al
 	mov di, 498
@@ -397,7 +424,7 @@ speedup:
 speeddown:
 	mov al, speed
 	cmp al, 16;18
-	jz loop_gen_bri
+	jz loop_gen_bri2
 	add al, 4
 	mov speed, al
 	mov di, 498
@@ -407,7 +434,7 @@ speeddown:
 	mov speedinfo, al
 	stosw
 
-	jmp loop_gen_bri
+	jmp loop_gen_bri2
 scores_up:
 	;mov ah, 3
 	;mov al, 178
@@ -431,6 +458,12 @@ scores_up:
 	mov ax, snake_len
 	inc ax
 	mov snake_len, ax
+	mov ax, scores
+	xor ch, ch
+	mov cl, speedinfo
+	sub cx, 30h
+	add ax, cx
+	mov scores, ax
 	mov bl, 10
 	mov di, 178
 	xor cx, cx
@@ -457,26 +490,95 @@ scores_up:
 	mov al, 0
 	jmp sc_up_ret
 ;4 9
-sneak_tail dw 1680, 1678, 1676;, 1674, 1672, 1670, 1668
+snake_tail dw 1680, 1678, 1676, 1000 dup(0);, 1674, 1672, 1670, 1668
 counter_sneak db 50
 speed db 20;22
 speedinfo db 30h
 direct db 0
 is_move db 0
 dist db 0
-snake_len dw 0
+snake_len dw 3
+scores dw 0
+game_end db 0
 
 move	proc near
 	call shift
+	call check
+	mov al, game_end
+	cmp al, 0
+	jne ret_mark
 	
 	;mov ax, 7000h
 	mov ah, 2
 	mov al, 79
 	stosw
 	sub di, 2
-	
-	ret
+	ret_mark:	
+		ret
 move endp
+
+check proc near
+	mov cx, snake_len
+	sub cx, 1
+	mov ax, 2
+	mul cx
+	mov si, ax
+	ch_loop:
+		mov bx, snake_tail[si]
+		cmp di, bx
+		je game_end_pr
+		cmp si, 0
+		je ret_m
+		sub si, 2
+		jmp ch_loop
+	game_end_pr:
+		mov al, game_end
+		inc al
+		mov game_end, al
+		mov di, 1638
+		mov ah, 4
+		mov al, 205
+		print_loop:
+			stosw
+			cmp di, 1758
+			jne print_loop
+			mov di, 1798
+			mov ax, 0
+		print_loop2:
+			stosw
+			cmp di, 1918
+			jl print_loop2
+			add di, 40
+		print_loop3:
+			stosw
+			cmp di, 2078
+			jl print_loop3
+			add di, 40
+		print_loop4:
+			stosw
+			cmp di, 2238
+			jl print_loop4
+			xor si, si
+			mov ah, 4
+			mov di, 2008
+		print_gn:
+			cmp si, gnlen
+			jge prnext
+			mov al, goodnews[si]
+			stosw
+			inc si
+			jmp print_gn
+		prnext:
+			mov di, 2278
+			mov ah, 4
+			mov al, 205
+		print_loop5:
+			stosw
+			cmp di, 2398
+			jne print_loop5
+	ret_m:
+	 	ret
+check endp
 
 shift	proc near
 	mov al, direct
@@ -558,6 +660,8 @@ read_buf	proc near
 	mov head, bx
 	ret
 read_buf endp
+goodnews db ' You died.'
+gnlen dw $-goodnews
 text1 db ' Scores: 0\n\n'
 	  db ' Speed: \n\n\n'
       db ' Help!\n\n'
