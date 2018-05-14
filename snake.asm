@@ -102,8 +102,8 @@ int1c proc near
 @@2:
 	mov counter_sneak, al
 @@3:
-	mov	al, 20h
-	out	20h, al
+	;mov	al, 20h
+	;out	20h, al
 	pop ax
 	sti
 	iret
@@ -212,6 +212,38 @@ loop_b:
 	mov al, 0bch
 	int 10h
 
+	;горизонтальные стены
+	xor si, si
+	xor cx, cx
+	mov di, 198
+	;mov ah, 7
+	wall_loop:
+		mov ah, hor_up[si]
+		;add ah, 2
+		cmp ah, 1
+		je wall_next
+		add ah, 5
+		wall_next:
+		mov al, 178
+		stosw
+		inc si
+		cmp si, 60
+		jl wall_loop
+	xor si, si
+	xor cx, cx
+	mov di, 3718
+	;mov ah, 7
+	wall_loop2:
+		mov ah, hor_down[si]
+		cmp ah, 1
+		je wall_next2
+		add ah, 5
+		wall_next2:
+		mov al, 178
+		stosw
+		inc si
+		cmp si, 60
+		jl wall_loop2
 
 	;mov cx, 25
 	mov dh, 1
@@ -241,6 +273,41 @@ vert_lines:
 	mov dl, 0
 	mov dh, 25
 	int 10h
+
+	;вертикальные стены
+	xor si, si
+	xor cx, cx
+	mov di, 358
+	;mov ah, 7
+	wall_loop3:
+		mov ah, vert_left[si]
+		cmp ah, 1
+		je wall_next3
+		add ah, 5
+		wall_next3:
+		mov al, 178
+		stosw
+		inc si
+		add di, 158
+		cmp si, 21
+		jl wall_loop3
+	
+	xor si, si
+	xor cx, cx
+	mov di, 476
+	;mov ah, 7
+	wall_loop4:
+		mov ah, vert_right[si]
+		cmp ah, 1
+		je wall_next4
+		add ah, 5
+		wall_next4:
+		mov al, 178
+		stosw
+		inc si
+		add di, 158
+		cmp si, 21
+		jl wall_loop4
 
 ;info
 	mov di, 160
@@ -292,7 +359,7 @@ loop_gen:
 	;cmp al, 0cbh
 	;jz left
 	cmp al, 30h
-	jz sec_up
+	jz s_u;sec_up
 	cmp al, 0d0h
 	jz down;
 	cmp al, 0ceh
@@ -322,31 +389,36 @@ switch db 0
 left:
 	mov al, direct
 	cmp al, 0
-	jz loop_gen
+	jz c_rev;loop_gen
 	mov al, 3
 	mov direct, al
 	jmp loop_gen
 down:
 	mov al, direct
 	cmp al, 1
-	jz loop_gen
+	jz c_rev;loop_gen
 	mov al, 2
 	mov direct, al
 	jmp loop_gen
 up:
 	mov al, direct
 	cmp al, 2
-	jz loop_gen
+	jz c_rev;loop_gen
 	mov al, 1
 	mov direct, al
 	jmp loop_gen
 right:
 	mov al, direct
 	cmp al, 3
-	jz loop_gen
+	jz c_rev;loop_gen
 	mov al, 0
 	mov direct, al
 	jmp loop_gen
+c_rev:
+	call reverse
+	jmp loop_gen
+s_u:
+	jmp sec_up
 loop_gen_bri:
 	jmp loop_gen
 speedup_bri:
@@ -491,6 +563,10 @@ scores_up:
 	jmp sc_up_ret
 ;4 9
 snake_tail dw 1680, 1678, 1676, 1000 dup(0);, 1674, 1672, 1670, 1668
+hor_up db 5 dup(1), 10 dup(0), 5 dup(1), 20 dup(0), 20 dup(1) 
+hor_down db 5 dup(1), 10 dup(0), 5 dup(1), 20 dup(0), 20 dup(1) 
+vert_left db 4 dup(1), 4 dup(0), 8 dup(1), 2 dup(0), 3 dup(1)
+vert_right db 4 dup(1), 4 dup(0), 8 dup(1), 2 dup(0), 3 dup(1)
 counter_sneak db 50
 speed db 20;22
 speedinfo db 30h
@@ -500,6 +576,64 @@ dist db 0
 snake_len dw 3
 scores dw 0
 game_end db 0
+pre_direct db 0
+prot db 3, 2, 1, 0
+
+reverse proc near
+	mov ax, 2
+	mul snake_len
+	mov si, ax
+	sub si, 2
+	mov ax, snake_tail[si] 
+	sub si, 2
+	sub ax, snake_tail[si]
+	cmp ax, 2
+	je @@right
+	cmp ax, 160
+	je @@down
+	cmp ax, -2
+	je @@left
+	jmp @@up
+
+	@@right:
+		mov pre_direct, 0
+		jmp do_rev
+	@@left:
+		mov pre_direct, 3
+		jmp do_rev
+	@@down:
+		mov pre_direct, 2
+		jmp do_rev
+	@@up:
+		mov pre_direct, 1
+
+	do_rev:
+
+	mov ax, 2
+	mul snake_len
+	mov si, 0
+	mov di, ax
+	sub di, 2
+	rev_loop:
+		mov ax, snake_tail[si]
+		mov bx, snake_tail[di]
+		mov snake_tail[si], bx
+		mov snake_tail[di], ax
+		add si, 2
+		sub di, 2
+		cmp si, di
+		jb rev_loop
+	mov al, pre_direct;hhh
+	cmp al, direct
+	je @@retr
+	xor ax, ax
+	mov al, direct
+	mov si, ax
+	mov al, prot[si]
+	mov direct, al
+	@@retr:
+	ret
+reverse endp
 
 move	proc near
 	call shift
