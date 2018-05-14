@@ -58,11 +58,13 @@ int9 proc near
 	jz @@2
 	jmp @@9
 @@2:
-	mov ah, game_end
-	cmp ah, 0
-	je next2
-	mov al, 81h
-next2:
+	;mov ah, game_end
+	;cmp ah, 0
+	;je next2
+	;cmp al, 81h
+	;je next2
+	;mov al, 0
+;next2:
 	call write_buf
 @@9:
 	in 	al, 61h
@@ -85,25 +87,26 @@ int1c proc near
 	cli
 	push ax
 	mov al, cs:switch
+	mov dh, cs:speed
 	cmp al, 1
 	jz @@3
-	mov al, counter_sneak
+	mov al, cs:counter_sneak
 	inc al
-	cmp al, speed;10
-	jle @@2;
-	mov ah, game_end
-	cmp ah, 0
-	jne @@3;
+	cmp al, dh;speed;10
+	jbe @@2;
+	;mov ah, game_end
+	;cmp ah, 0
+	;jne @@3;
 	mov al, 0
-	mov counter_sneak, al	
+	mov cs:counter_sneak, al	
 	mov al, 30h
 	call write_buf
 	jmp @@3
 @@2:
-	mov counter_sneak, al
+	mov cs:counter_sneak, al
 @@3:
-	;mov	al, 20h
-	;out	20h, al
+	mov	al, 20h
+	out	20h, al
 	pop ax
 	sti
 	iret
@@ -343,6 +346,7 @@ loop_gen:
 	cmp bx, tail
 	jz loop_gen
 	call read_buf
+	call gec
 	;mov ah, game_end
 	;cmp ah, 0
 	;jne reb_mark
@@ -563,10 +567,10 @@ scores_up:
 	jmp sc_up_ret
 ;4 9
 snake_tail dw 1680, 1678, 1676, 1000 dup(0);, 1674, 1672, 1670, 1668
-hor_up db 5 dup(1), 10 dup(0), 5 dup(1), 20 dup(0), 20 dup(1) 
-hor_down db 5 dup(1), 10 dup(0), 5 dup(1), 20 dup(0), 20 dup(1) 
+hor_up db 5 dup(1), 10 dup(0), 5 dup(1), 20 dup(1), 20 dup(1) 
+hor_down db 5 dup(1), 10 dup(1), 5 dup(1), 20 dup(0), 20 dup(1) 
 vert_left db 4 dup(1), 4 dup(0), 8 dup(1), 2 dup(0), 3 dup(1)
-vert_right db 4 dup(1), 4 dup(0), 8 dup(1), 2 dup(0), 3 dup(1)
+vert_right db 4 dup(1), 4 dup(1), 6 dup(1), 4 dup(0), 3 dup(1)
 counter_sneak db 50
 speed db 20;22
 speedinfo db 30h
@@ -578,6 +582,17 @@ scores dw 0
 game_end db 0
 pre_direct db 0
 prot db 3, 2, 1, 0
+
+gec proc near
+	mov ah, game_end
+	cmp ah, 0
+	je @@re
+	cmp al, 81h
+	je @@re
+	mov al, 0
+	@@re:
+		ret
+gec endp
 
 reverse proc near
 	mov ax, 2
@@ -636,8 +651,10 @@ reverse proc near
 reverse endp
 
 move	proc near
+	push si
 	call shift
 	call check
+	pop si
 	mov al, game_end
 	cmp al, 0
 	jne ret_mark
@@ -656,15 +673,21 @@ check proc near
 	sub cx, 1
 	mov ax, 2
 	mul cx
-	mov si, ax
+	mov si, ax;проверка на самопоедание
 	ch_loop:
 		mov bx, snake_tail[si]
 		cmp di, bx
 		je game_end_pr
 		cmp si, 0
-		je ret_m
+		je ch_walls;ret_m
 		sub si, 2
 		jmp ch_loop
+	ch_walls:
+	;проверка на стенки
+	call check_walls
+	cmp cx, 0
+	je ret_m
+
 	game_end_pr:
 		mov al, game_end
 		inc al
@@ -713,6 +736,110 @@ check proc near
 	ret_m:
 	 	ret
 check endp
+
+check_walls proc near
+	mov cx, 0
+	cmp di, 320
+	jle @@hor_up
+	cmp di, 3718
+	jge @@hor_down
+	jmp check_vert
+
+	@@hor_up:
+		mov bx, di
+		sub bx, 200
+		xor si, si
+		@@finder:
+			mov ax, 2
+			mul si
+			inc si
+			cmp ax, bx
+			jne @@finder
+		xor ax, ax
+		mov al, hor_up[si]
+		cmp al, 0
+		je @@wret
+		mov cx, 1
+		mov ax, snake_tail[2]
+		cmp ax, 3718
+		jle @@wret
+		mov hor_up[si], 0 
+		mov cx, 0
+		@@wret:
+			ret
+	@@hor_down:
+		mov bx, di
+		sub bx, 3720
+		xor si, si
+		@@finder2:
+			mov ax, 2
+			mul si
+			inc si
+			cmp ax, bx
+			jne @@finder2
+		xor ax, ax
+		mov al, hor_down[si]
+		cmp al, 0
+		je @@wret2
+		mov cx, 1
+		mov ax, snake_tail[2]
+		cmp ax, 320
+		jge @@wret2
+		mov hor_down[si], 0 
+		mov cx, 0
+		@@wret2:
+			ret
+	check_vert:
+		mov bx, di
+		mov cx, 0
+		@@vichet:
+			inc cx
+			sub bx, 160
+			cmp bx, 480
+			ja @@vichet
+
+		;sub cx, 1
+		cmp bx, 358
+		;ja @@ver_right
+		je @@ver_left
+		cmp bx, 476
+		je @@ver_right
+		mov cx, 0
+		jmp @@wret3
+
+		@@ver_left:
+			mov si, cx
+			mov cx, 0
+			mov al, vert_left[si]
+			cmp al, 0
+			je @@wret3
+			mov cx, 1
+			mov ax, snake_tail[0]
+			sub ax, di
+			cmp ax, 10
+			jb @@wret3
+			mov vert_left[si], 0 
+			mov cx, 0
+			@@wret3:
+				ret
+
+		@@ver_right:
+			mov si, cx
+			mov cx, 0
+			mov al, vert_right[si]
+			cmp al, 0
+			je @@wret4
+			mov cx, 1
+			mov ax, di
+			sub ax, snake_tail[0]
+			cmp ax, 10
+			jb @@wret4
+			mov vert_right[si], 0 
+			mov cx, 0
+			@@wret4:
+				ret
+	
+check_walls endp
 
 shift	proc near
 	mov al, direct
