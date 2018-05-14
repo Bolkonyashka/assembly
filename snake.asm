@@ -312,6 +312,17 @@ vert_lines:
 		cmp si, 21
 		jl wall_loop4
 
+	;портальчики
+	mov di, 866
+	mov ah, 3
+	mov al, 86
+	stosw
+
+	mov di, 3010
+	mov ah, 3
+	mov al, 86
+	stosw
+
 ;info
 	mov di, 160
 	xor si, si
@@ -582,6 +593,11 @@ scores dw 0
 game_end db 0
 pre_direct db 0
 prot db 3, 2, 1, 0
+;apple dw 0
+;apple_counter dw 0
+;apple_lim dw 10
+;apple_pos dw 0
+;apple_list dw 944, 1090, 1260, 1326, 1700, 2064, 580, 3288, 2606, 1720
 
 gec proc near
 	mov ah, game_end
@@ -661,14 +677,57 @@ move	proc near
 	
 	;mov ax, 7000h
 	mov ah, 2
+	mov al, 1;64;79
+	stosw
+	push di
+	mov di, snake_tail[2]
 	mov al, 79
 	stosw
+	pop di
 	sub di, 2
 	ret_mark:	
 		ret
 move endp
 
 check proc near
+	cmp di, 866
+	jne @@chnext
+	mov di, 3010
+	mov ah, direct
+	cmp ah, 3
+	je @@lft
+	cmp ah, 0
+	je @@rght
+	cmp ah, 1
+	je @@up
+	jmp @@dwn
+	;jmp @@chnext2
+	@@chnext:
+	cmp di, 3010
+	jne @@chnext2
+	mov di, 866
+	mov ah, direct
+	cmp ah, 3
+	je @@lft
+	cmp ah, 0
+	je @@rght
+	cmp ah, 1
+	je @@up
+	jmp @@dwn
+	;jmp @@chnext2
+	@@lft:
+		sub di, 2
+		jmp @@chnext2
+	@@rght:
+		add di, 2
+		jmp @@chnext2
+	@@up:
+		sub di, 160
+		jmp @@chnext2
+	@@dwn:
+		add di, 160
+		jmp @@chnext2
+	@@chnext2:
 	mov cx, snake_len
 	sub cx, 1
 	mov ax, 2
@@ -926,7 +985,7 @@ gnlen dw $-goodnews
 text1 db ' Scores: 0\n\n'
 	  db ' Speed: \n\n\n'
       db ' Help!\n\n'
-	  db ' Change speed:\n +/- or 1,2,3,4,5\n\n'
+	  db ' Change speed:\n +/- \n\n'
 	  db ' Stop:\n Space button\n\n'
 	  db ' Snake control:\n Arrow buttons'
 len dw $-text1
